@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Detector de Soldadura</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            background: #111;
+            color: white;
+            text-align: center;
+            font-family: Arial;
+        }
+        #label {
+            font-size: 28px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        video {
+            border-radius: 12px;
+            border: 4px solid #444;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Detector de Soldaduras</h1>
+<button onclick="init()">Iniciar Cámara</button>
+
+<div id="webcam-container"></div>
+<div id="label"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+
+<script type="text/javascript">
+
+let model, maxPredictions;
+const modelURL = "model.json";  // mismo folder
+const metadataURL = "metadata.json";
+
+async function init() {
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+
+    const flip = true;
+
+    const constraints = {
+        video: { facingMode: "user" } // FORZAR CÁMARA FRONTAL
+    };
+
+    const webcam = new tmImage.Webcam(300, 300, flip);
+    await webcam.setup(constraints);
+    await webcam.play();
+    window.requestAnimationFrame(loop);
+
+    document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+    window.webcam = webcam;
+}
+
+async function loop() {
+    window.webcam.update();
+    await predict();
+    window.requestAnimationFrame(loop);
+}
+
+async function predict() {
+    const prediction = await model.predict(window.webcam.canvas);
+    
+    let best = prediction[0];
+    for (let i = 1; i < prediction.length; i++) {
+        if (prediction[i].probability > best.probability) best = prediction[i];
+    }
+
+    document.getElementById("label").innerHTML =
+        best.className + " (" + (best.probability * 100).toFixed(1) + "%)";
+}
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+</body>
+</html>
